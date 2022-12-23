@@ -1,11 +1,16 @@
 package com.siva.sc;
 
-import java.sql.SQLOutput;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 
+
+@Component
 public class EmailClient {
 
     private SpellCheckService spellCheckService;
 
+    @Autowired
     public EmailClient(SpellCheckService spellCheckService){
         this.spellCheckService = spellCheckService;
     }
