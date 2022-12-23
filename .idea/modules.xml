@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/spring-boot-seesion/spring-boot-seesion.iml" filepath="$PROJECT_DIR$/spring-boot-seesion/spring-boot-seesion.iml" />
+      <module fileurl="file://$PROJECT_DIR$/spring-boot-seesion/spring-jdbc/spring-jdbc.iml" filepath="$PROJECT_DIR$/spring-boot-seesion/spring-jdbc/spring-jdbc.iml" />
+      <module fileurl="file://$PROJECT_DIR$/spring-session.iml" filepath="$PROJECT_DIR$/spring-session.iml" />
+    </modules>
+  </component>
+</project>
