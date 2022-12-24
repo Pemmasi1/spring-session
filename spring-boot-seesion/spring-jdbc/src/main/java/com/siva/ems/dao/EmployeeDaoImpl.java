@@ -2,85 +2,123 @@ package com.siva.ems.dao;
 
 import com.siva.ems.dao.mapper.EmployeeRowMapper;
 import com.siva.ems.domain.Employee;
-import com.siva.ems.platform.BaseException;
-import com.siva.ems.platform.LambdaUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.util.ArrayList;
+import java.sql.SQLException;
 import java.util.List;
 
 @Repository
 @Slf4j
-public class EmployeeDaoImpl implements EmployeeDao{
+public class EmployeeDaoImpl implements EmployeeDao {
+
     private static final String ADD_EMP = "insert into employee(emp_name,emp_salary,dept_no) values(?,?,?)";
+    private static final String GET_EMPLOYEES = "select emp_no,emp_name,emp_salary,dept_no from employee";
+
+    private static final String GET_EMP_BY_ID = "select emp_no,emp_name,emp_salary,dept_no from employee where emp_no=?";
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-
     @Override
     public List<Employee> getEmployees() {
-        List<Employee> list = jdbcTemplate.query("select * from employee", new EmployeeRowMapper());
-        log.info("Employee count is {}",list.size());
+        List<Employee> list = jdbcTemplate.query(GET_EMPLOYEES, new EmployeeRowMapper());
+        log.info("Employee count :{}", list.size());
         return list;
     }
 
     @Override
+    @Transactional
     public Employee addEmployee(Employee employee) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(con -> {
-            PreparedStatement ps = con.prepareStatement(ADD_EMP, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement ps = con.prepareStatement(ADD_EMP, new String[]{"emp_no"});
             ps.setString(1, employee.getEmpName());
             ps.setFloat(2, employee.getEmpSalary());
-            ps.setInt(3,employee.getDeptNo());
+            ps.setLong(3, employee.getDeptNo());
             return ps;
-
         }, keyHolder);
-        int empno = LambdaUtil.safeGet(keyHolder::getKey).get().intValue();
+        int empno =  keyHolder.getKey().intValue()  ;
         employee.setEmpNo(empno);
         log.info("Employee {} is added with id {}", employee.getEmpName(), employee.getEmpNo());
         return employee;
     }
 
     @Override
+    public Employee findById(int empno) {
+        try {
+            return jdbcTemplate.query(con -> {
+                PreparedStatement ps = con.prepareStatement(GET_EMP_BY_ID);
+                ps.setInt(1, empno);
+                return ps;
+            }, new EmployeeRowMapper()).get(0);
+        } catch (IndexOutOfBoundsException exp) {
+            throw new RuntimeException(String.format("Employee %s is not present in DB", empno));
+        }
+    }
+
+    @Override
     public Employee updateEmployee(Employee employee) {
-        return null;
+        jdbcTemplate.update(con -> {
+            PreparedStatement ps = con.prepareStatement("update employee set emp_name=?, emp_salary=?,dept_no = ? where emp_no=?");
+            ps.setString(1, employee.getEmpName());
+            ps.setFloat(2, employee.getEmpSalary());
+            ps.setLong(3, employee.getDeptNo());
+            ps.setInt(4,employee.getEmpNo());
+            return ps;
+        });
+        return employee;
     }
 
     @Override
-    public Boolean deleteEmployee(int empNo) {
-        return true;
+    public Boolean deleteEmployee(int empno) {
+        int count = jdbcTemplate.update(con -> {
+            PreparedStatement ps = con.prepareStatement("delete from employee where emp_no=?");
+            ps.setInt(1,empno);
+            return ps;
+        });
+        return count!=0;
     }
 
-    @Override
-    public Employee findById(int empNo) {
-        return new Employee();
-    }
 
     @Override
     public List<Employee> search(String str) {
-        return new ArrayList<>();
+        return  jdbcTemplate.query(con -> {
+            PreparedStatement ps = con.prepareStatement("select emp_no,emp_name,emp_salary,dept_no from employee where lower(emp_name) like ?");
+            ps.setString(1,"%"+str.toLowerCase()+"%");
+            return ps;
+        },new EmployeeRowMapper());
+    }
+
+
+    @Override
+    public List<Employee> findByDeptNo(int deptno) {
+        return  jdbcTemplate.query(new PreparedStatementCreator() {
+            @Override
+            public PreparedStatement createPreparedStatement(Connection con) throws SQLException {
+                PreparedStatement ps = con.prepareStatement("select emp_no,emp_name,emp_salary,dept_no from employee where dept_no=?");
+                ps.setInt(1,deptno);
+                return ps;
+            }
+        },new EmployeeRowMapper());
     }
 
     @Override
-    public List<Employee> findByDeptNo(int deptNo) {
-       List<Employee> list = jdbcTemplate.query(String.format("select * from employee where dept_no = %d", deptNo), new EmployeeRowMapper());
-       if (list.isEmpty()) {
-           throw new BaseException("Did not Fetch Results", 423);
-       }
-       return list;
-    }
-
-    @Override
-    public List<Employee> addEmployees(List<Employee> employees) {
-        employees.forEach(this::addEmployee);
-        return employees;
+    @Transactional
+    public List<Employee> addEmployees(List<Employee> list) {
+        jdbcTemplate.batchUpdate(ADD_EMP, list, 50, (ps, employee) -> {
+            ps.setString(1, employee.getEmpName());
+            ps.setFloat(2, employee.getEmpSalary());
+            ps.setLong(3, employee.getDeptNo());
+        });
+        return list;
     }
 }
