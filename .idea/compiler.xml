@@ -11,8 +11,8 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="spring-boot-seesion" target="18" />
-      <module name="spring-jdbc" target="18" />
+      <module name="spring-boot-seesion" target="11" />
+      <module name="spring-jdbc" target="11" />
       <module name="spring-session" target="18" />
     </bytecodeTargetLevel>
   </component>
