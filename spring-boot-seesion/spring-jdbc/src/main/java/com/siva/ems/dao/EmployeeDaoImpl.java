@@ -1,24 +1,20 @@
 package com.siva.ems.dao;
 
+import com.siva.ems.dao.mapper.EmployeeRowMapper;
 import com.siva.ems.domain.Employee;
+import com.siva.ems.platform.BaseException;
+import com.siva.ems.platform.LambdaUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.util.LambdaUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.batch.BatchProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.PreparedStatementCreator;
-import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 @Repository
 @Slf4j
@@ -28,9 +24,12 @@ public class EmployeeDaoImpl implements EmployeeDao{
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+
     @Override
     public List<Employee> getEmployees() {
-        return new ArrayList<>();
+        List<Employee> list = jdbcTemplate.query("select * from employee", new EmployeeRowMapper());
+        log.info("Employee count is {}",list.size());
+        return list;
     }
 
     @Override
@@ -42,8 +41,9 @@ public class EmployeeDaoImpl implements EmployeeDao{
             ps.setFloat(2, employee.getEmpSalary());
             ps.setInt(3,employee.getDeptNo());
             return ps;
+
         }, keyHolder);
-        int empno = Objects.nonNull(keyHolder.getKey())?keyHolder.getKey().intValue():0;
+        int empno = LambdaUtil.safeGet(keyHolder::getKey).get().intValue();
         employee.setEmpNo(empno);
         log.info("Employee {} is added with id {}", employee.getEmpName(), employee.getEmpNo());
         return employee;
@@ -71,11 +71,16 @@ public class EmployeeDaoImpl implements EmployeeDao{
 
     @Override
     public List<Employee> findByDeptNo(int deptNo) {
-        return new ArrayList<>();
+       List<Employee> list = jdbcTemplate.query(String.format("select * from employee where dept_no = %d", deptNo), new EmployeeRowMapper());
+       if (list.isEmpty()) {
+           throw new BaseException("Did not Fetch Results", 423);
+       }
+       return list;
     }
 
     @Override
     public List<Employee> addEmployees(List<Employee> employees) {
-        return new ArrayList<>();
+        employees.forEach(this::addEmployee);
+        return employees;
     }
 }
